@@ -9,9 +9,9 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ContributionStatus(str, Enum):
-    PAID = "paid"          # Сплачено (наприклад, 200)
-    EXEMPT = "exempt"      # Звільнений / вибув ("-")
-    PENDING = "pending"    # Очікує оплати (порожньо / None)
+    PAID = "paid"
+    EXEMPT = "exempt"
+    PENDING = "pending"
 
 
 class MemberRole(str, Enum):
@@ -31,15 +31,12 @@ class MonthPayment(BaseModel):
 class Member(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    full_name: str
+    last_name: str
+    first_name: str | None = None
     telegram_id: int | None = None
     telegram_username: str | None = None
     role: MemberRole = MemberRole.MEMBER
-    monthly_payments: dict[int, MonthPayment] = Field(default_factory=dict)
-
-    @property
-    def is_admin(self) -> bool:
-        return self.role == MemberRole.ADMIN
+    monthly_payments: dict[tuple[int, int], MonthPayment] = Field(default_factory=dict)
 
 
 class ExpenseRecord(BaseModel):
@@ -61,28 +58,15 @@ class ExpenseRecord(BaseModel):
 class BudgetSummary(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    total_collected: Decimal
-    jar_balance: Decimal
-    total_expenses: Decimal
+    total_collected: Decimal = Decimal("0.00")
+    jar_balance: Decimal = Decimal("0.00")
+    total_expenses: Decimal = Decimal("0.00")
 
 
 class ColivingBudgetData(BaseModel):
-    """Головний контейнер даних, який отримує розробник бізнес-логіки бота."""
     model_config = ConfigDict(frozen=True)
 
-    members_by_name: dict[str, Member]
-    expense_records: list[ExpenseRecord]
-    summary: BudgetSummary
+    members_by_last_name: dict[str, Member]
+    expense_records: list[ExpenseRecord] = Field(default_factory=list)
+    summary: BudgetSummary = Field(default_factory=BudgetSummary)
     admin_telegram_ids: frozenset[int] = Field(default_factory=frozenset)
-
-    def get_member_by_tg_id(self, telegram_id: int) -> Member | None:
-        for member in self.members_by_name.values():
-            if member.telegram_id == telegram_id:
-                return member
-        return None
-
-    def is_admin_tg_id(self, telegram_id: int) -> bool:
-        if telegram_id in self.admin_telegram_ids:
-            return True
-        member = self.get_member_by_tg_id(telegram_id)
-        return member is not None and member.is_admin
