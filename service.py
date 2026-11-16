@@ -72,6 +72,7 @@ class ColivingBudgetService:
                     first_name=existing.first_name if existing else None,
                     telegram_id=existing.telegram_id if existing else None,
                     is_paid_current_month=self._is_paid_for_month(last_paid_tag, current_date),
+                    duty_dates=existing.duty_dates if existing else [],
                 )
 
             self._members = updated_members
