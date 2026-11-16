@@ -7,7 +7,7 @@ from schemas import Member
 
 
 class ColivingBudgetService:
-    """Єдина точка доступу для bot.py до всіх операцій із даними учасників та JSON-файлами."""
+    """Сервіс для роботи з учасниками та збереження стану в members.json."""
 
     def __init__(
         self,
@@ -32,6 +32,7 @@ class ColivingBudgetService:
             self.sync_from_api_json()
 
     def _save_state(self) -> None:
+        self._state_path.parent.mkdir(parents=True, exist_ok=True)
         serialized = {
             last_name: member.model_dump()
             for last_name, member in self._members.items()
@@ -50,10 +51,8 @@ class ColivingBudgetService:
         paid_month = int(month_str)
         return (paid_year, paid_month) >= (target_date.year, target_date.month)
 
-    # --- Публічні методи для bot.py ---
-
     def sync_from_api_json(self, reference_date: date | None = None) -> None:
-        """Перечитує api_to_json.json, оновлює статуси оплат, зберігаючи існуючі прив'язки telegram_id."""
+        """Оновлює статуси оплат з api_to_json.json, зберігаючи прив'язані telegram_id."""
         with self._lock:
             if not self._api_path.exists():
                 return
@@ -79,10 +78,7 @@ class ColivingBudgetService:
             self._save_state()
 
     def register_user(self, telegram_id: int, last_name: str, first_name: str) -> Member | None:
-        """
-        Реєструє користувача (/register Бачурін Єгор).
-        Повертає оновлений Member або None, якщо прізвища немає в таблиці.
-        """
+        """Реєструє користувача за прізвищем та зберігає в members.json."""
         clean_last_name = last_name.strip().rstrip(".")
         with self._lock:
             existing = self._members.get(clean_last_name)
@@ -100,25 +96,12 @@ class ColivingBudgetService:
             return updated
 
     def get_by_telegram_id(self, telegram_id: int) -> Member | None:
-        """Шукає учасника за його Telegram ID."""
         with self._lock:
             for member in self._members.values():
                 if member.telegram_id == telegram_id:
                     return member
             return None
 
-    def get_by_last_name(self, last_name: str) -> Member | None:
-        """Шукає учасника за прізвищем."""
-        clean_last_name = last_name.strip().rstrip(".")
-        with self._lock:
-            return self._members.get(clean_last_name)
-
     def get_all_members(self) -> list[Member]:
-        """Повертає список усіх учасників (для виводу таблиці данини)."""
         with self._lock:
             return list(self._members.values())
-
-    def get_unpaid_members(self) -> list[Member]:
-        """Повертає список тих, хто ще не здав за поточний місяць."""
-        with self._lock:
-            return [m for m in self._members.values() if not m.is_paid_current_month]
