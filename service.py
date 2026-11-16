@@ -34,7 +34,7 @@ class ColivingBudgetService:
     def _save_state(self) -> None:
         self._state_path.parent.mkdir(parents=True, exist_ok=True)
         serialized = {
-            last_name: member.model_dump()
+            last_name: member.model_dump(mode="json")
             for last_name, member in self._members.items()
         }
         self._state_path.write_text(
