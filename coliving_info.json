@@ -1,6 +1,6 @@
 {
   "coliving_name": "Колівінг #########",
-  "monthly_fee_uah": 250,
+  "monthly_fee_uah": 200,
   "payment_deadline_day": 5,
   "jar_url": "https://send.monobank.ua/jar/XXXXXXXXXX",
   "sotnyk": {
@@ -8,8 +8,18 @@
     "telegram_username": "@username_sotnyka",
     "phone": "+380XXXXXXXXX"
   },
-  "wifi_ssid": "Coliving_5G",
-  "wifi_password": "password123",
+  "wifi_points": [
+    {
+      "location": "Основний / Кухня",
+      "ssid": "Coliving_Main_5G",
+      "password": "password123"
+    },
+    {
+      "location": "Кімнати / Коридор",
+      "ssid": "Coliving_Ext_5G",
+      "password": "password456"
+    }
+  ],
   "duty_checklist": [
     "Винести сміття та замінити пакети",
     "Протерти поверхні на кухні та плиту",
