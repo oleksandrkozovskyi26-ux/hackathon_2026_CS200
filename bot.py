@@ -3,9 +3,11 @@ import telebot
 import html
 from telebot import types
 from dotenv import load_dotenv
+from datetime import date, timedelta
 
 from service import ColivingBudgetService
 from duty_service import ColivingDutyService
+from schemas import *
 
 budget = ColivingBudgetService()
 duty = ColivingDutyService()
@@ -48,6 +50,103 @@ def build_members_table(members) -> str:
     # Обгортаємо в <pre> для збереження моноширинного форматування
     return f"<b>Статус оплат:</b>\n<pre>{table_text}</pre>"
 
+def format_duty_dates(dates: list[date]) -> list[str]:
+    """Сортує дати та об'єднує послідовні дні в діапазони (наприклад, 01-03.09)."""
+    if not dates:
+        return []
+
+    sorted_dates = sorted(set(dates))  # прибираємо дублікати та сортуємо
+    ranges = []
+    start = end = sorted_dates[0]
+
+    for current in sorted_dates[1:]:
+        if current == end + timedelta(days=1):
+            end = current
+        else:
+            ranges.append((start, end))
+            start = end = current
+    ranges.append((start, end))
+
+    formatted = []
+    for s, e in ranges:
+        if s == e:
+            formatted.append(s.strftime("%d.%m"))
+        elif s.month == e.month:
+            formatted.append(f"{s.strftime('%d')}-{e.strftime('%d.%m')}")
+        else:
+            formatted.append(f"{s.strftime('%d.%m')}-{e.strftime('%d.%m')}")
+
+    return formatted
+
+import html
+from schemas import ColivingInfo, SotnykContact, WifiAccessPoint
+
+
+def format_coliving_info(info: ColivingInfo) -> str:
+    """Форматує довідкову інформацію про колівінг для виводу в Telegram (HTML)."""
+    blocks: list[str] = []
+
+    # 1. Заголовок
+    blocks.append(f"🏠 <b>{html.escape(info.coliving_name)}</b>")
+
+    # 2. Компактна таблиця основних параметрів
+    meta_rows = [
+        ("Внесок", f"{info.monthly_fee_uah} грн/міс"),
+        ("Дедлайн", f"до {info.payment_deadline_day}-го числа"),
+        ("Сотник", _format_sotnyk(info.sotnyk)),
+    ]
+    if info.sotnyk.phone:
+        meta_rows.append(("Телефон", info.sotnyk.phone))
+
+    w_key = max(len(r[0]) for r in meta_rows)
+    table_lines = [f"{k:<{w_key}} │ {v}" for k, v in meta_rows]
+    blocks.append(f"<pre>{html.escape(chr(10).join(table_lines))}</pre>")
+
+    # 3. Посилання на банку
+    if info.jar_url:
+        safe_url = html.escape(info.jar_url, quote=True)
+        blocks.append(f'💳 <b>Банка для оплати:</b> <a href="{safe_url}">Поповнити</a>')
+
+    # 4. Точки Wi-Fi (з урахуванням location та копіюванням пароля в 1 тап)
+    if info.wifi_points:
+        wifi_lines = ["📶 <b>Wi-Fi:</b>"]
+        for wp in info.wifi_points:
+            wifi_lines.append(_format_wifi_point(wp))
+        blocks.append("\n".join(wifi_lines))
+
+    # 5. Чекліст чергового
+    if info.duty_checklist:
+        duty_lines = ["🧹 <b>Чекліст чергового:</b>"]
+        for item in info.duty_checklist:
+            duty_lines.append(f"• {html.escape(item)}")
+        blocks.append("\n".join(duty_lines))
+
+    # 6. Правила колівінгу
+    if info.house_rules:
+        rules_lines = ["📜 <b>Правила колівінгу:</b>"]
+        for idx, rule in enumerate(info.house_rules, start=1):
+            rules_lines.append(f"{idx}. {html.escape(rule)}")
+        blocks.append("\n".join(rules_lines))
+
+    return "\n\n".join(blocks)
+
+
+def _format_sotnyk(sotnyk: SotnykContact) -> str:
+    if sotnyk.telegram_username:
+        username = sotnyk.telegram_username.lstrip("@")
+        return f"{sotnyk.full_name} (@{username})"
+    return sotnyk.full_name
+
+
+def _format_wifi_point(wp: WifiAccessPoint) -> str:
+    ssid = html.escape(wp.ssid)
+    password = html.escape(wp.password)
+    if wp.location:
+        location = html.escape(wp.location)
+        return f"• <b>{location}</b> ({ssid}): <code>{password}</code>"
+    return f"• {ssid}: <code>{password}</code>"
+
+
 @bot.message_handler(commands=['start'])
 def start_message(message):
     user_id = message.from_user.id
@@ -87,11 +186,9 @@ def handle_buttons_on_click(call):
     user_id = call.from_user.id
     member = budget.get_by_telegram_id(user_id)
     if call.data == "coliving_info":
-        bot.answer_callback_query(call.id)
         bot.send_message(call.message.chat.id, "Інформація про колівінг"
                          "")
     elif call.data == "get_my_taxes":
-        bot.answer_callback_query(call.id)
         if member and member.is_paid_current_month:
             bot.send_message(call.message.chat.id, f"Так, ви заплатили✅")
         else:
@@ -100,6 +197,19 @@ def handle_buttons_on_click(call):
         members = budget.get_all_members()
         text = build_members_table(members)
         bot.send_message(call.message.chat.id, text, parse_mode="HTML")
+    elif call.data == "table_on_duty":
+        members = duty.get_all_members_with_duties()
+        today_duty = duty.get_today_duty_member()
+
+        if not members:
+            bot.send_message(call.message.chat.id, "Список чергувань порожній.")
+            return
+
+        text = build_duties_table(members, today_duty)
+        bot.send_message(call.message.chat.id, text, parse_mode="HTML")
+    elif call.data == "coliving_info":
+        bot.send_message(call.message.chat.id, "Сунична 136", parse_mode="HTML")
+
 if __name__ == '__main__':
     bot.infinity_polling()
 
