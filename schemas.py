@@ -20,6 +20,13 @@ class SotnykContact(BaseModel):
     telegram_username: str | None = None
     phone: str | None = None
 
+class WifiAccessPoint(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    location: str | None = None  # Наприклад: "Кухня", "2-й поверх", "Основний"
+    ssid: str
+    password: str
+
 class ColivingInfo(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -28,7 +35,6 @@ class ColivingInfo(BaseModel):
     payment_deadline_day: int = Field(ge=1, le=31)
     jar_url: str | None = None
     sotnyk: SotnykContact
-    wifi_ssid: str | None = None
-    wifi_password: str | None = None
+    wifi_points: list[WifiAccessPoint] = Field(default_factory=list)
     duty_checklist: list[str] = Field(default_factory=list)
     house_rules: list[str] = Field(default_factory=list)
