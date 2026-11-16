@@ -12,3 +12,23 @@ class Member(BaseModel):
     telegram_id: int | None = None
     is_paid_current_month: bool = False
     duty_dates: list[date] = Field(default_factory=list)
+
+class SotnykContact(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    full_name: str
+    telegram_username: str | None = None
+    phone: str | None = None
+
+class ColivingInfo(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    coliving_name: str
+    monthly_fee_uah: int
+    payment_deadline_day: int = Field(ge=1, le=31)
+    jar_url: str | None = None
+    sotnyk: SotnykContact
+    wifi_ssid: str | None = None
+    wifi_password: str | None = None
+    duty_checklist: list[str] = Field(default_factory=list)
+    house_rules: list[str] = Field(default_factory=list)
