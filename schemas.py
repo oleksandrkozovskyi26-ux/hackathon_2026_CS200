@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
 from enum import Enum
 from typing import Any
@@ -15,11 +15,16 @@ class ContributionStatus(str, Enum):
     PENDING = "pending"    # Очікує оплати (порожньо / None)
 
 
+class MemberRole(str, Enum):
+    MEMBER = "member"      # Звичайний учасник (перегляд свого балансу, чеків)
+    ADMIN = "admin"        # Адміністратор (розсилки боржникам, прив'язка ID, ручне оновлення)
+
+
 class MonthPayment(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     month_number: int = Field(ge=1, le=12)
-    year: int | None = None  # На майбутнє для скейлінгу між роками
+    year: int | None = None
     paid_amount: Decimal | None = None
     contribution_status: ContributionStatus
 
@@ -28,15 +33,20 @@ class Member(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     full_name: str
-    telegram_id: int | None = None  # Резерв під прив'язку акаунту в Telegram-боті
+    telegram_id: int | None = None
     telegram_username: str | None = None
+    role: MemberRole = MemberRole.MEMBER
     monthly_payments: dict[int, MonthPayment] = Field(default_factory=dict)
+
+    @property
+    def is_admin(self) -> bool:
+        return self.role == MemberRole.ADMIN
 
 
 class ExpenseRecord(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    record_id: int  # Номер рядка або ID запису
+    record_id: int
     item_description: str
     responsible_member_name: str
     expense_amount: Decimal
@@ -64,3 +74,16 @@ class ColivingBudgetData(BaseModel):
     members_by_name: dict[str, Member]
     expense_records: list[ExpenseRecord]
     summary: BudgetSummary
+    admin_telegram_ids: frozenset[int] = Field(default_factory=frozenset)
+
+    def get_member_by_tg_id(self, telegram_id: int) -> Member | None:
+        for member in self.members_by_name.values():
+            if member.telegram_id == telegram_id:
+                return member
+        return None
+
+    def is_admin_tg_id(self, telegram_id: int) -> bool:
+        if telegram_id in self.admin_telegram_ids:
+            return True
+        member = self.get_member_by_tg_id(telegram_id)
+        return member is not None and member.is_admin
