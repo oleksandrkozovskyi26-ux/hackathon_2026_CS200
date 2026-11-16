@@ -78,6 +78,39 @@ def format_duty_dates(dates: list[date]) -> list[str]:
 
     return formatted
 
+def build_duties_table(members, today_duty=None) -> str:
+    rows = []
+
+    for member in members:
+        initial = f"{member.first_name[0]}." if member.first_name else ""
+        short_name = f"{member.last_name} {initial}".strip()
+
+        prefix = "*" if (today_duty and member == today_duty) else " "
+        display_name = html.escape(f"{prefix}{short_name}")
+
+        date_chunks = format_duty_dates(member.duty_dates)
+        dates_str = ", ".join(date_chunks) if date_chunks else "—"
+
+        rows.append((display_name, dates_str))
+
+    # Автоматична ширина під найдовше прізвище (макс. 16 символів)
+    w_name = min(16, max((len(r[0]) for r in rows), default=10))
+
+    lines = []
+    for name, dates_str in rows:
+        clean_name = name[:w_name]
+        lines.append(f"{clean_name:<{w_name}} │ {dates_str}")
+
+    table_text = "\n".join(lines)
+
+    header_info = "<b>Графік чергувань:</b>\n"
+    if today_duty:
+        t_first = today_duty.first_name or ""
+        t_name = html.escape(f"{today_duty.last_name} {t_first}".strip())
+        header_info += f"Сьогодні (*): <b>{t_name}</b>\n"
+
+    return f"{header_info}<pre>{table_text}</pre>"
+
 import html
 from schemas import ColivingInfo, SotnykContact, WifiAccessPoint
 
@@ -161,11 +194,10 @@ def start_message(message):
     markup = types.InlineKeyboardMarkup(row_width=1)
     btn_coliving_info = types.InlineKeyboardButton(text="Інформація про колівінг", callback_data="coliving_info")
     btn_on_duty = types.InlineKeyboardButton(text="Таблиця Чергування", callback_data="table_on_duty")
-    btn_check_my_duty = types.InlineKeyboardButton(text="Перевірити коли моє чергування", callback_data="check_my_duty")
     btn_table_taxes = types.InlineKeyboardButton(text="Таблиця данини за Колівінг (Хто заплатив)", callback_data="get_taxes_table")
     btn_taxes = types.InlineKeyboardButton(text="Чи заплатив я за колівінг?", callback_data="get_my_taxes")
 
-    markup.add(btn_coliving_info, btn_on_duty, btn_check_my_duty, btn_table_taxes, btn_taxes)
+    markup.add(btn_coliving_info, btn_on_duty, btn_table_taxes, btn_taxes)
 
     bot.send_message(message.chat.id, f"Вітаємо ({member.last_name} {member.first_name}) в боті колівінгу #########.")
     bot.send_message(message.chat.id, "Оберіть що бажаєте зробити:", reply_markup=markup)
@@ -186,7 +218,7 @@ def handle_buttons_on_click(call):
     user_id = call.from_user.id
     member = budget.get_by_telegram_id(user_id)
     if call.data == "coliving_info":
-        bot.send_message(call.message.chat.id, "Інформація про колівінг"
+        bot.send_message(call.message.chat.id, "Сунична 136"
                          "")
     elif call.data == "get_my_taxes":
         if member and member.is_paid_current_month:
@@ -207,8 +239,6 @@ def handle_buttons_on_click(call):
 
         text = build_duties_table(members, today_duty)
         bot.send_message(call.message.chat.id, text, parse_mode="HTML")
-    elif call.data == "coliving_info":
-        bot.send_message(call.message.chat.id, "Сунична 136", parse_mode="HTML")
 
 if __name__ == '__main__':
     bot.infinity_polling()
