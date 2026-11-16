@@ -1,0 +1,23 @@
+{
+  "coliving_name": "Колівінг #########",
+  "monthly_fee_uah": 250,
+  "payment_deadline_day": 5,
+  "jar_url": "https://send.monobank.ua/jar/XXXXXXXXXX",
+  "sotnyk": {
+    "full_name": "Козовський Олександр",
+    "telegram_username": "@username_sotnyka",
+    "phone": "+380XXXXXXXXX"
+  },
+  "wifi_ssid": "Coliving_5G",
+  "wifi_password": "password123",
+  "duty_checklist": [
+    "Винести сміття та замінити пакети",
+    "Протерти поверхні на кухні та плиту",
+    "Перевірити наявність миючого засобу та паперу"
+  ],
+  "house_rules": [
+    "Тихий час після 23:00",
+    "Миття посуду одразу після їжі",
+    "Про поломки та закінчення госптоварів писати сотнику"
+  ]
+}
