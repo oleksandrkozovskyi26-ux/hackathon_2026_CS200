@@ -11,7 +11,7 @@ class ColivingBudgetService:
 
     def __init__(
         self,
-        api_json_path: str | Path = "api_to_json.json",
+        api_json_path: str | Path = "api_to_json_vkladka.json",
         state_json_path: str | Path = "members.json",
     ) -> None:
         self._api_path = Path(api_json_path)
