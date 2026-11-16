@@ -9,15 +9,14 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ContributionStatus(str, Enum):
-    """Успадкування від str дозволяє легко серіалізувати Enum у JSON та FSM бота."""
     PAID = "paid"          # Сплачено (наприклад, 200)
     EXEMPT = "exempt"      # Звільнений / вибув ("-")
     PENDING = "pending"    # Очікує оплати (порожньо / None)
 
 
 class MemberRole(str, Enum):
-    MEMBER = "member"      # Звичайний учасник (перегляд свого балансу, чеків)
-    ADMIN = "admin"        # Адміністратор (розсилки боржникам, прив'язка ID, ручне оновлення)
+    MEMBER = "member"
+    ADMIN = "admin"
 
 
 class MonthPayment(BaseModel):
@@ -68,7 +67,7 @@ class BudgetSummary(BaseModel):
 
 
 class ColivingBudgetData(BaseModel):
-    """Головний контейнер даних, готовий до передачі в хендлери Telegram-бота."""
+    """Головний контейнер даних, який отримує розробник бізнес-логіки бота."""
     model_config = ConfigDict(frozen=True)
 
     members_by_name: dict[str, Member]
