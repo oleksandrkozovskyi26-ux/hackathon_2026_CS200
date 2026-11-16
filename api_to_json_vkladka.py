@@ -27,5 +27,5 @@ for key, value in dict_raw.items():
         if value[i] == "":
             rare_dict[key] = dict_raw["Місяць"][i-1]
             break
-with open("api_to_json.json", "w", encoding="utf-8") as f:
+with open("api_to_json_vkladka.json", "w", encoding="utf-8") as f:
     json.dump(rare_dict, f, ensure_ascii=False, indent=2)
